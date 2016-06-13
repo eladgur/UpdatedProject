@@ -1,14 +1,8 @@
 #include "functions.h"
-//change at 10/6/2016
+//change at 13/6/2016
 
 /*
-להמשיך את את הפונקציה  readcmddbfromtxtfile
-
-לבדוק שפוינטרים של הגדלים תקינים
-
-לבדוק את כל הקבצים גג
-
-לבדוק קריאה מקובץ וכתיבה לקובץ בינארי וטקסט
+check updatecommandlist and copy to the text file
 */
 
 ///////////////////////
@@ -23,13 +17,12 @@ void main()
 	char *short_term_history[N], *input;
 	int i = 0;
 	short int DBSize, cmdSize;
-	restoreSize(sizeOfDB, DBSize,cmdSize);
-	readCmdDBFromTxtFile(&cmdList,short_term_history, nameOfTxtFile,cmdSize);
+	restoreSize(sizeOfDB, &DBSize, &cmdSize);
+	readCmdDBFromTxtFile(&cmdList, short_term_history, nameOfTxtFile, cmdSize);
 	readApDBFromBinFile(fileName, DBSize, &apDBList);
 
 	input = (char*)malloc(MAX_LINE_LEN*sizeof(char));
 	gets(input);
-
 
 
 	while (strcmp(input, "exit") != 0)
@@ -38,8 +31,7 @@ void main()
 		updateCommandList(&cmdList, short_term_history, input);
 		input = (char*)malloc(MAX_LINE_LEN*sizeof(char));
 		gets(input);
-
 	}
-	updateSizeOfDBInFile(sizeOfDB, *apDBList.size,*cmdList.size);
+	updateSizeOfDBInFile(sizeOfDB, *apDBList.size, *cmdList.size);
 	printf("\nbye bye\n\n");
 }

@@ -1,19 +1,28 @@
 #include "functions.h"
 // Functions implementations
 /*
-change at 11/06/2016
+change at 13/06/2016 d
 NOTES:
-1.NEED TO CONVERT DATE AND ADD IT TO AP BIN FILE.
-2.ADD ALL COMMANDS FROM TXT FILE TO DATABASE
+1.change the mask in convertFromCompressedBits!
+wrong after the second time, numofRooms good, after NOT!
 */
 
-void restoreSize(char * fileName,short int * sizeOfDB,short int * numOfCmds)
+void restoreSize(char * fileName, short int * sizeOfDB, short int * numOfCmds)
 {
 	FILE *fp = fopen(fileName, "rb");
-	checkMemoryAllocation(fp);
-
-	fread(sizeOfDB, sizeof(short int), 1, fp);
-	fread(numOfCmds, sizeof(short int), 1, fp);
+	short int starter = 0;
+	if (fp == NULL) // if its the first run of the program
+	{
+		fp = fopen(fileName, "wb");
+		fwrite(&starter, sizeof(short int), 1, fp);
+		fwrite(&starter, sizeof(short int), 1, fp);
+		*sizeOfDB = *numOfCmds = starter;
+	}
+	else
+	{
+		fread(sizeOfDB, sizeof(short int), 1, fp);
+		fread(numOfCmds, sizeof(short int), 1, fp);
+	}
 	fclose(fp);
 }
 //readFromBINFILE
@@ -23,10 +32,12 @@ void readApDBFromBinFile(char *fileName, short int DBSize, ApList *apDBList)
 	Apartment *newApartment;
 	int i;
 
-
 	makeEmptyApList(apDBList);
+	if (DBSize == 0)
+		return;
 
 	input = fopen(fileName, "rb");
+	checkMemoryAllocation(input);
 	for (i = 0; i < DBSize; i++)
 	{
 		newApartment = getAppFromBinFile(input);
@@ -47,26 +58,29 @@ Apartment * getAppFromBinFile(FILE *filePtr)
 
 	fread(&newApartment->code, sizeof(short int), 1, filePtr);
 	fread(&adresseLen, sizeof(short int), 1, filePtr);
-	fread(&newApartment->address, sizeof(char), adresseLen, filePtr);
-	fread(&newApartment->price, sizeof(short int), 1, filePtr);
+	newApartment->address = (char*)malloc((adresseLen + 1)*sizeof(char));
+	fread(newApartment->address, sizeof(char), adresseLen, filePtr);
+	newApartment->address[adresseLen] = '\0';
+	fread(&newApartment->price, sizeof(int), 1, filePtr);
 	fread(&leftPart, sizeof(unsigned int), 1, filePtr);
 	fread(&rightPart, sizeof(BYTE), 1, filePtr);
 	convertFromCompressedBits(newApartment, leftPart, rightPart);
 	return newApartment;
 }
+
 void updateSizeOfDBInFile(char *fileName, short int sizeDB, short int sizeCmd)
 {
 	FILE *fp;
 
 	fp = fopen(fileName, "wb");
 	checkMemoryAllocation(fp);
-	fwrite(sizeDB, sizeof(short int), 1, fp);
-	fwrite(sizeCmd, sizeof(short int), 1, fp);
+	fwrite(&sizeDB, sizeof(short int), 1, fp);
+	fwrite(&sizeCmd, sizeof(short int), 1, fp);
 	fclose(fp);
 }
 void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, BYTE rightPart)
 {
-	int leftPartSize = BYTE_SIZE * 4, leftOverBits, i;
+	short int leftPartSize = BYTE_SIZE * 4, leftOverBits;
 	unsigned int mask1 = ~0, tempMask;
 
 	//left part
@@ -103,18 +117,44 @@ void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, B
 	newApartment->DBDate.year = rightPart | tempMask;
 }
 //readFromTXTFILE
-void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char *fileName,int numOfCmds)
+void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char *fileName, int numOfCmds)
 {
 	FILE *input;
-	int i,numOfCommands;
-
+	int i;
+	char temp[MAX_LINE_LEN];
 
 	input = fopen(fileName, "r");
-	checkMemoryAllocation(input);
 	makeEmptyCommandList(cmdList);
-	for (i = 0; i < 7; i++)
+
+	for (i = 0; i < N; i++)
 		short_term_history[i] = NULL;
-	
+
+	if (input == NULL)
+		return;
+
+
+	if (numOfCmds <= N)
+		for (i = 0; i < numOfCmds; i++)
+		{
+			fgets(temp, MAX_LINE_LEN, input);
+			short_term_history[i] = (char*)malloc((strlen(temp) + 1) * sizeof(char));
+			strcpy(short_term_history[i], temp);
+		}
+	else //if numofcmd >= 7
+	{
+		for (i = 0; i < N; i++) //get the first 7 cmds
+		{
+			fgets(temp, MAX_LINE_LEN, input);
+			short_term_history[i] = (char*)malloc((strlen(temp) + 1) * sizeof(char));
+			strcpy(short_term_history[i], temp);
+		}
+
+		for (i = 0; i < numOfCmds - N; i++)
+		{
+			fgets(temp, MAX_LINE_LEN, input);
+			insertDataToStartCommandList(cmdList, temp);
+		}
+	}
 }
 
 // Commands
@@ -162,21 +202,32 @@ void updateCommandList(CommandList *cmdList, char *short_term_history[], char *c
 void updateCommandFile(char *fileName, char *command)
 {
 	FILE *src = fopen(fileName, "r+");
-	FILE *tempFileCopy = fopen("tempCopyOfFile", "w+");
+	FILE *tempFileCopy;
+	if (src == NULL)
+	{
+		src = fopen(fileName, "w");
+		checkMemoryAllocation(src);
+		fwrite(command, sizeof(char), strlen(command), src);
+	}
+	else
+	{
+		tempFileCopy = fopen("tempCopyOfFile", "w+");
+		checkMemoryAllocation(tempFileCopy);
 
-	copyFile(src, tempFileCopy);
+		copyFile(src, tempFileCopy);
+		fclose(src);
+		//create updated file
+		src = fopen(fileName, "w");
+		//insert last command to the start of command file
+		fputs(command, src);
+		fputs("\n", src);
+
+		//copy all the rest back to src
+		copyFile(tempFileCopy, src);
+		fclose(tempFileCopy);
+
+	}
 	fclose(src);
-	//create updated file
-	src = fopen(fileName, "w");
-	//insert last command to the start of command file
-	fputs(command, src);
-	fputs("\n", src);
-
-	//copy all the rest back to src
-	copyFile(tempFileCopy, src);
-
-	fclose(src);
-	fclose(tempFileCopy);
 }
 
 void copyFile(FILE *src, FILE *dest)
@@ -302,8 +353,12 @@ CommandListNode * createNewCommandListNode(char *command, CommandListNode * next
 {
 	CommandListNode * res = (CommandListNode*)malloc(sizeof(CommandListNode));
 
-	res->cmdIndex = (int*)malloc(sizeof(int));
-	res->cmdPtr = command;
+	res->cmdPtr = (char*)malloc((strlen(command) + 1)*sizeof(char));
+	checkMemoryAllocation(res);
+	res->cmdIndex = (short int*)malloc(sizeof(short int));
+	checkMemoryAllocation(res->cmdPtr);
+
+	strcpy(res->cmdPtr, command);
 	res->next = next;
 	return res;
 }
@@ -341,6 +396,24 @@ BOOL isEmptyCommandList(CommandList *lst)
 	else
 		return FALSE;
 }
+void insertDataToStartCommandList(CommandList *lst, char* command)
+{
+	CommandListNode * newHead;
+	newHead = createNewCommandListNode(command, NULL);
+	insertNodeToStartCmdList(lst, newHead);
+}
+void insertNodeToStartCmdList(CommandList *lst, CommandListNode * head)
+{
+	if (isEmptyCommandList(lst)) {
+		head->next = NULL;
+		lst->head = lst->tail = head;
+	}
+	else {
+		head->next = lst->head;
+		lst->head = head;
+	}
+}
+
 // Apartment Lists functions
 void makeEmptyApList(ApList *lst) {
 	lst->head = lst->tail = NULL;
@@ -372,7 +445,6 @@ ApListNode * createNewApListNode(Apartment* apPtr, ApListNode * next)
 	res->next = next;
 	return res;
 }
-
 void insertDataToStartApList(ApList *lst, Apartment* apPtr) {
 	ApListNode * newHead;
 	newHead = createNewApListNode(apPtr, NULL);
@@ -700,7 +772,6 @@ void addEntryTime(EntryToDBDate *DBDate)
 {
 	time_t rawtime;
 	struct tm *info;
-	char buffer[80];
 
 	time(&rawtime);
 	DBDate->timeInSec = rawtime;
@@ -741,17 +812,20 @@ char * getAddressFromString(char * str, int *lengthOfAddress)
 
 void addAppToBinFile(char *fileName, Apartment  newApartment)
 {
-	FILE *src = fopen(fileName, "ab");
+	FILE *src;
 	short int adresseLen;
 	unsigned int leftPart;
 	BYTE rightPart;
+
+	src = fopen(fileName, "ab");
+	checkMemoryAllocation(src);
 
 	//insert last command to the start of command file
 	fwrite(&newApartment.code, sizeof(short int), 1, src);
 	adresseLen = (short int)strlen(newApartment.address);
 	fwrite(&adresseLen, sizeof(short int), 1, src);
 	fwrite(newApartment.address, sizeof(char), adresseLen, src);
-	fwrite(&newApartment.price, sizeof(short int), 1, src);
+	fwrite(&newApartment.price, sizeof(int), 1, src);
 	converteToBits(&leftPart, &rightPart, newApartment);
 	fwrite(&leftPart, sizeof(unsigned int), 1, src);
 	fwrite(&rightPart, sizeof(BYTE), 1, src);
@@ -760,11 +834,11 @@ void addAppToBinFile(char *fileName, Apartment  newApartment)
 
 void converteToBits(unsigned int *leftPart, BYTE *rightPart, Apartment newApartment)
 {
-	int leftPartSize = BYTE_SIZE * 4, i;
+	int leftPartSize = BYTE_SIZE * 4;
 	unsigned int mask1 = newApartment.numOfRooms;
 	unsigned int mask2 = newApartment.enterDate.day;
 	unsigned int mask3 = newApartment.enterDate.month;
-	unsigned int mask4 = newApartment.enterDate.year;
+	unsigned int mask4 = newApartment.enterDate.year - 2000;
 	unsigned int mask5 = newApartment.DBDate.day;
 	unsigned int mask6 = newApartment.DBDate.month;
 	unsigned int mask7 = newApartment.DBDate.year - 2000;

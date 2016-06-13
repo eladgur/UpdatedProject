@@ -1,7 +1,7 @@
 #ifndef __functions_h
 #define __functions_h
 
-//change at 11 / 06 / 2016
+//change at 13 / 06 / 2016
 
 
 #define _CRT_SECURE_NO_WARNINGS
@@ -42,7 +42,7 @@ typedef struct entryToDBDate {
 }EntryToDBDate;
 
 typedef struct apartment {
-	int code;
+	short int code;
 	char *address;
 	int price;
 	short int numOfRooms;
@@ -83,7 +83,7 @@ typedef struct sortingMethods
 void restoreSize(char * fileName, short int * sizeOfDB, short int * numOfCmds);
 //readFromBinFile
 void readApDBFromBinFile(char *fileName, short int DBSize, ApList *apDBList);
-void updateSizeOfDBInFile(char *fileName, short int sizeDB, int sizeCmd);
+void updateSizeOfDBInFile(char *fileName, short int sizeDB, short int sizeCmd);
 Apartment * getAppFromBinFile(FILE *filePtr);
 void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, BYTE rightPart);
 //readFromTXTFILE
@@ -106,6 +106,8 @@ CommandListNode * createNewCommandListNode(char *command, CommandListNode * next
 void insertDataToEndCommandList(CommandList *lst, char* cmd);
 void insertNodeToEndCommandList(CommandList *lst, CommandListNode * tail);
 BOOL isEmptyCommandList(CommandList *lst);
+void insertDataToStartCommandList(CommandList *lst, char* command);
+void insertNodeToStartCmdList(CommandList *lst, CommandListNode * head);
 // ApList functions.
 void printListIter(ApList *lst);
 void makeEmptyApList(ApList *lst);
