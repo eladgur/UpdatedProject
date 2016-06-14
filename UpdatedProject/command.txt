@@ -1,6 +1,12 @@
-find-apt -MaxPrice 3500000
-find-apt -MinNumRooms 4 -s
-buy-apt 6
+find-apt -MaxPrice 4500000 -Date 01052001
+add-apt "Elad 8" 2500000 4 31 01 2004
+add-apt "Elad 7" 5000000 3 01 10 1992
+add-apt "Elad 6" 6000000 6 12 03 2003
+add-apt "Elad 5" 7000000 2 01 01 2001
+add-apt "Elad 4" 3500000 1 31 01 2004
+add-apt "Elad 3" 3000000 3 01 10 1992
+add-apt "Elad 2" 2000000 6 12 03 2003
+add-apt "Elad 1" 4000000 2 01 10 2001
 find-apt -MaxPrice 4500000 -Date 01052001
 add-apt "Elad 8" 2500000 4 31 01 2004
 add-apt "Elad 7" 5000000 3 01 10 1992

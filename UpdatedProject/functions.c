@@ -81,35 +81,35 @@ void updateSizeOfDBInFile(char *fileName, short int sizeDB, short int sizeCmd)
 }
 void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, BYTE rightPart)
 {
-	short int leftPartSize = BYTE_SIZE * 4, leftOverBits;
+	short int leftPartSize = BYTE_SIZE * 4;
 	unsigned int mask1 = ~0, tempMask;
 
 	//left part
-	newApartment->numOfRooms = (short int)(leftPart >> (leftPartSize - 4));		//get the first 4 bits
+	newApartment->numOfRooms = (short int)(leftPart >> (leftPartSize - 4));		//get the first 4 bits (MSB)
 
-	tempMask = leftPart << 4;													//get rest of numOfRooms(first 4 bits)
+	tempMask = leftPart << 4;													//get rest of the first 4 MSB
 
-	newApartment->enterDate.day = (short int)(tempMask >> (leftPartSize - 5));  //move left partsize - the 5 bits of enterdate.day
+	newApartment->enterDate.day = (short int)(tempMask >> (leftPartSize - 5));  //shifting left partsize - the 5 bits of enterdate.day
 
-	tempMask = leftPart << 9;													//get rest of first 9 bits					
-	newApartment->enterDate.month = (short int)(tempMask >> (leftPartSize - 4)); //move leftPart size - 5 bits of month
+	tempMask = leftPart << 9;													//get rest of 9 MSB					
+	newApartment->enterDate.month = (short int)(tempMask >> (leftPartSize - 4)); //shifting leftPart size - 5 bits of month
 
-	tempMask = leftPart << 13;													//get rest of numOfRooms(first 13 bits)				
-	newApartment->enterDate.year = (short int)(tempMask >> (leftPartSize - 7)); //move leftPart size - 7 bits of year
+	tempMask = leftPart << 13;													//get rest of numOfRooms 13 MSB				
+	newApartment->enterDate.year = (short int)(tempMask >> (leftPartSize - 7)); //shifting leftPart size - 7 bits of year
 
-	//DB DATE
-	tempMask = leftPart << 20;										
-	newApartment->DBDate.day = (short int)(tempMask >> (leftPartSize - 5));
+																				//DB DATE
+	tempMask = leftPart << 20;													//get rest of 20 MSB bit	
+	newApartment->DBDate.day = (short int)(tempMask >> (leftPartSize - 5));		//shifting all except DBdate.day
 
-	tempMask = leftPart << 25;
-	newApartment->DBDate.month = (short int)(tempMask >> (leftPartSize - 4));
+	tempMask = leftPart << 25;													//get rest of 25 MSB bit
+	newApartment->DBDate.month = (short int)(tempMask >> (leftPartSize - 4));	//shifting all except DBdate.month
 
-	tempMask = leftPart << 29;
-	tempMask >>= leftPartSize - 3;
-	tempMask <<= 4;
-	//right part
-	rightPart >>= 4;
-	newApartment->DBDate.year = (short int)(rightPart | tempMask);
+	tempMask = leftPart << 29;													//get rest of 29 MSB bit
+	tempMask >>= leftPartSize - 3;												//shifting all except 3 MSB of DBdate.year
+	tempMask <<= 4;																//PRE-PARE for masking - shifting 4 MSB of year 5 bits left
+																				//right part
+	rightPart >>= 4;															//PRE-PARE for masking - shifting 4 LSB of year 4 bits left
+	newApartment->DBDate.year = (short int)(rightPart | tempMask);				//Mask to DBdate.year sd
 }
 //readFromTXTFILE
 void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char *fileName, int numOfCmds)
