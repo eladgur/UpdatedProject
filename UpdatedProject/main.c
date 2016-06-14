@@ -1,8 +1,9 @@
 #include "functions.h"
-//change at 13/6/2016
+//change at 14/6/2016
 
 /*
-check updatecommandlist and copy to the text file
+-ELAD:read from apdata base bin file fixed.
+-need to change the save of !<> command by the correct command
 */
 
 ///////////////////////

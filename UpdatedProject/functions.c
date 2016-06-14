@@ -1,7 +1,7 @@
 #include "functions.h"
 // Functions implementations
 /*
-change at 13/06/2016 d
+change at 14/06/2016 d
 NOTES:
 1.change the mask in convertFromCompressedBits!
 wrong after the second time, numofRooms good, after NOT!
@@ -62,6 +62,7 @@ Apartment * getAppFromBinFile(FILE *filePtr)
 	fread(newApartment->address, sizeof(char), adresseLen, filePtr);
 	newApartment->address[adresseLen] = '\0';
 	fread(&newApartment->price, sizeof(int), 1, filePtr);
+	//get left and right Parts
 	fread(&leftPart, sizeof(unsigned int), 1, filePtr);
 	fread(&rightPart, sizeof(BYTE), 1, filePtr);
 	convertFromCompressedBits(newApartment, leftPart, rightPart);
@@ -84,37 +85,31 @@ void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, B
 	unsigned int mask1 = ~0, tempMask;
 
 	//left part
-	leftOverBits = 4;
-	newApartment->numOfRooms = (leftPart >> (leftPartSize - leftOverBits));
+	newApartment->numOfRooms = (short int)(leftPart >> (leftPartSize - 4));		//get the first 4 bits
 
-	tempMask = leftPart << leftOverBits;
-	leftOverBits += 5;
-	newApartment->enterDate.day = tempMask >> (leftPartSize - leftOverBits);
+	tempMask = leftPart << 4;													//get rest of numOfRooms(first 4 bits)
 
-	tempMask = leftPart << leftOverBits;
-	leftOverBits += 4;
-	newApartment->enterDate.month = tempMask >> (leftPartSize - leftOverBits);
+	newApartment->enterDate.day = (short int)(tempMask >> (leftPartSize - 5));  //move left partsize - the 5 bits of enterdate.day
 
-	tempMask = leftPart << leftOverBits;
-	leftOverBits += 7;
-	newApartment->enterDate.year = tempMask >> (leftPartSize - leftOverBits);
+	tempMask = leftPart << 9;													//get rest of first 9 bits					
+	newApartment->enterDate.month = (short int)(tempMask >> (leftPartSize - 4)); //move leftPart size - 5 bits of month
+
+	tempMask = leftPart << 13;													//get rest of numOfRooms(first 13 bits)				
+	newApartment->enterDate.year = (short int)(tempMask >> (leftPartSize - 7)); //move leftPart size - 7 bits of year
 
 	//DB DATE
-	tempMask = leftPart << leftOverBits;
-	leftOverBits += 5;
-	newApartment->DBDate.day = tempMask >> (leftPartSize - leftOverBits);
+	tempMask = leftPart << 20;										
+	newApartment->DBDate.day = (short int)(tempMask >> (leftPartSize - 5));
 
-	tempMask = leftPart << leftOverBits;
-	leftOverBits += 4;
-	newApartment->DBDate.month = tempMask >> (leftPartSize - leftOverBits);
+	tempMask = leftPart << 25;
+	newApartment->DBDate.month = (short int)(tempMask >> (leftPartSize - 4));
 
-	tempMask = leftPart << leftOverBits;
-	leftOverBits += 3;
-
-	tempMask <<= 3;
+	tempMask = leftPart << 29;
+	tempMask >>= leftPartSize - 3;
+	tempMask <<= 4;
 	//right part
 	rightPart >>= 4;
-	newApartment->DBDate.year = rightPart | tempMask;
+	newApartment->DBDate.year = (short int)(rightPart | tempMask);
 }
 //readFromTXTFILE
 void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char *fileName, int numOfCmds)

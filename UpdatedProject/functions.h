@@ -1,7 +1,7 @@
 #ifndef __functions_h
 #define __functions_h
 
-//change at 13 / 06 / 2016
+//change at 14/06/2016
 
 
 #define _CRT_SECURE_NO_WARNINGS
