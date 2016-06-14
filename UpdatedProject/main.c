@@ -22,9 +22,15 @@ void main()
 	readCmdDBFromTxtFile(&cmdList, short_term_history, nameOfTxtFile, cmdSize);
 	readApDBFromBinFile(fileName, DBSize, &apDBList);
 
+	
+
+	printf("Please enter one of the following commands:\n");
+	printf("add-apt, find - apt, buy - apt or delete - apt\n");
+	printf("For reconstruction commands, please enter :\n");
+	printf("!!, !num, history, short_history or !^str1^str2\n");
+
 	input = (char*)malloc(MAX_LINE_LEN*sizeof(char));
 	gets(input);
-
 
 	while (strcmp(input, "exit") != 0)
 	{

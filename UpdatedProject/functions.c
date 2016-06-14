@@ -1,10 +1,19 @@
 #include "functions.h"
 // Functions implementations
 /*
-change at 14/06/2016 d
+change at 14/06/2016 22:58
 NOTES:
-1.change the mask in convertFromCompressedBits!
-wrong after the second time, numofRooms good, after NOT!
+1. need to check the order of -sr -s doesn't go correctly and buy and delete app.
+
+ EVERYTHING ELSE WORKS PRETTY WELL!
+
+2. divide to files!
+
+3. write commands
+
+4. makeFile
+
+5. divide to 5 functions!
 */
 
 void restoreSize(char * fileName, short int * sizeOfDB, short int * numOfCmds)
@@ -95,7 +104,7 @@ void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, B
 	newApartment->enterDate.month = (short int)(tempMask >> (leftPartSize - 4)); //shifting leftPart size - 5 bits of month
 
 	tempMask = leftPart << 13;													//get rest of numOfRooms 13 MSB				
-	newApartment->enterDate.year = (short int)(tempMask >> (leftPartSize - 7)); //shifting leftPart size - 7 bits of year
+	newApartment->enterDate.year = (short int)(tempMask >> (leftPartSize - 7)) + 2000; //shifting leftPart size - 7 bits of year
 
 																				//DB DATE
 	tempMask = leftPart << 20;													//get rest of 20 MSB bit	
@@ -115,7 +124,7 @@ void convertFromCompressedBits(Apartment *newApartment, unsigned int leftPart, B
 void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char *fileName, int numOfCmds)
 {
 	FILE *input;
-	int i;
+	short int i;
 	char temp[MAX_LINE_LEN];
 
 	input = fopen(fileName, "r");
@@ -126,7 +135,6 @@ void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char
 
 	if (input == NULL)
 		return;
-
 
 	if (numOfCmds <= N)
 		for (i = 0; i < numOfCmds; i++)
@@ -147,8 +155,9 @@ void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char
 		for (i = 0; i < numOfCmds - N; i++)
 		{
 			fgets(temp, MAX_LINE_LEN, input);
-			insertDataToStartCommandList(cmdList, temp);
+			insertDataToStartCommandList(cmdList, temp, numOfCmds - N - i);
 		}
+		*(cmdList->size) = numOfCmds;
 	}
 }
 
@@ -162,16 +171,19 @@ void commandFilter(CommandList *cmdList, char *short_term_history[], ApList *apL
 	if (command[0] == '!')
 	{
 		if (command[1] == '!')
+		{
 			processCommand(apList, short_term_history[0]);
+			strcpy(command, short_term_history[0]);
+		}
 		else
 		{
 			sscanf(command, "%c%d%c", &dummy, &num, &flag);
-			outCommand = getCommandByNumber(num, *cmdList, short_term_history);
+			outCommand = getCommandByNumber(num, cmdList, short_term_history);
 			if (flag == '^') //case 5
 				outCommand = createModifiedCmd(command, outCommand);
 			processCommand(apList, outCommand);
+			strcpy(command, outCommand);
 		}
-		strcpy(command, outCommand);
 	}
 	else if (strcmp(command, "short_history") == 0) //case 3
 		printShortHistory(short_term_history, *(cmdList->tail->cmdIndex));
@@ -182,18 +194,27 @@ void commandFilter(CommandList *cmdList, char *short_term_history[], ApList *apL
 	}
 	else
 		processCommand(apList, command);
+
 }
 void updateCommandList(CommandList *cmdList, char *short_term_history[], char *command)
 {
 	char fileName[12] = "command.txt";
-	if (short_term_history[6] != NULL)
-		insertDataToEndCommandList(cmdList, short_term_history[6]);
-	promoteCommands(short_term_history, command);
-	if (short_term_history[0] != NULL)
-		short_term_history[0] = (char*)realloc(short_term_history[0], (strlen(command) + 1));
-	short_term_history[0] = command;
-	updateCommandFile(fileName, command);
-	*(cmdList->size) += 1;
+
+	if (!strcmp(command, "history\0") || !strcmp(command, "short_history\0"))
+	{
+		return;
+	}
+	else
+	{
+		if (short_term_history[6] != NULL)
+			insertDataToEndCommandList(cmdList, short_term_history[6]);
+		promoteCommands(short_term_history, command);
+		if (short_term_history[0] != NULL)
+			short_term_history[0] = (char*)realloc(short_term_history[0], (strlen(command) + 1));
+		short_term_history[0] = command;
+		updateCommandFile(fileName, command);
+		*(cmdList->size) += 1;
+	}
 }
 void updateCommandFile(char *fileName, char *command)
 {
@@ -212,13 +233,13 @@ void updateCommandFile(char *fileName, char *command)
 
 		copyFile(src, tempFileCopy);
 		fclose(src);
-		//create updated file
+		// create updated file
 		src = fopen(fileName, "w");
-		//insert last command to the start of command file
+		// insert last command to the start of command file
 		fputs(command, src);
 		fputs("\n", src);
 
-		//copy all the rest back to src
+		// copy all the rest back to src
 		copyFile(tempFileCopy, src);
 		fclose(tempFileCopy);
 
@@ -256,12 +277,12 @@ int getActualSizeOfArray(char *arr[])
 		i++;
 	return i;
 }
-char *getCmdByNumInList(int num, CommandList cmdList)
+char *getCmdByNumInList(int num, CommandList * cmdList)
 {
-	CommandListNode *cur = cmdList.head;
+	CommandListNode *cur = cmdList->head;
 	int i;
 
-	for (i = 0; i < num; i++)
+	for (i = 0; i < num - 1; i++)
 		cur = cur->next;
 	return cur->cmdPtr;
 }
@@ -279,7 +300,6 @@ char *createModifiedCmd(char *input, char *paramaters)
 		{
 			sub = (char*)malloc(strlen(token)*sizeof(char));
 			strcpy(sub, token);
-
 		}
 		else if (caret == 3)
 		{
@@ -291,56 +311,89 @@ char *createModifiedCmd(char *input, char *paramaters)
 	}
 	return str_replace(paramaters, sub, rep);
 }
-char* str_replace(char* string, const char* substr, const char* replacement)
-{
-	char* tok = NULL;
-	char* newstr = NULL;
-	char* oldstr = NULL;
-	int   oldstr_len = 0;
-	int   substr_len = 0;
-	int   replacement_len = 0;
+char* str_replace(char *src, char *from, char *to) {
 
-	newstr = strdup(string);
-	substr_len = strlen(substr);
-	replacement_len = strlen(replacement);
+	if (src == NULL || from == NULL || to == NULL) return NULL;
 
-	if (substr == NULL || replacement == NULL) {
-		return newstr;
+	// helper pointers
+	const char * sp; // src pointer
+	const char * mp; // match pointer
+	char * dp; // dest pointer (for writing)
+
+
+			   // lengths
+	size_t from_len = strlen(from);
+	size_t to_len = strlen(to);
+	size_t src_len = strlen(src);
+
+	// count matches
+	size_t count = 0;
+	sp = src;
+	while (1) {
+		mp = strstr(sp, from); // find next match
+		if (mp == NULL) break; // end of matches
+		count++;
+		sp = mp + from_len; // advance past match
 	}
 
-	while ((tok = strstr(newstr, substr))) {
-		oldstr = newstr;
-		oldstr_len = strlen(oldstr);
-		newstr = (char*)malloc(sizeof(char) * (oldstr_len - substr_len + replacement_len + 1));
+	// compute dest size
+	size_t len = src_len;
+	long int sub = (from_len - to_len)*count;
 
-		if (newstr == NULL) {
-			free(oldstr);
-			return NULL;
+	// sanity check
+	if (from_len >= to_len) {
+		if (sub > len || sub < 0) return NULL;
+	}
+	else {
+		if ((len - sub) < 0 || sub > 0) return NULL;
+	}
+
+	// allocate output buffer
+	size_t actual_size = (len - sub) + 1;
+	char *dest = malloc(actual_size);
+
+	// fill output buffer
+	if (dest != NULL) {
+
+		sp = src; // src pointer
+		dp = dest; // dest pointer
+
+		while (1) {
+			mp = strstr(sp, from); // find next match
+			if (mp == NULL) break; // end of matches
+
+								   // copy chunk before match
+			memcpy(dp, sp, mp - sp);
+			dp += mp - sp;
+
+			// copy replacement
+			memcpy(dp, to, to_len);
+			dp += to_len;
+
+			// advance past match
+			sp = mp + from_len;
 		}
 
-		memcpy(newstr, oldstr, tok - oldstr);
-		memcpy(newstr + (tok - oldstr), replacement, replacement_len);
-		memcpy(newstr + (tok - oldstr) + replacement_len, tok + substr_len, oldstr_len - substr_len - (tok - oldstr));
-		memset(newstr + oldstr_len - substr_len + replacement_len, 0, 1);
+		// copy tail
+		size_t k = src_len - (sp - src) + 1;
+		memcpy(dp, sp, k);
 
-		free(oldstr);
 	}
 
-	//free(string);
-
-	return newstr;
+	return dest;
 }
-char *getCommandByNumber(int num, CommandList cmdList, char *short_term_history[])
+
+char *getCommandByNumber(int num, CommandList * cmdList, char *short_term_history[])
 {
 	char *output;
-	if (isEmptyCommandList(&cmdList))
+	if (isEmptyCommandList(cmdList))
 		output = short_term_history[getActualSizeOfArray(short_term_history) - num]; //
 	else
 	{
-		if (*(cmdList.head->cmdIndex) >= num && num <= *(cmdList.tail->cmdIndex))
+		if (*(cmdList->head->cmdIndex) <= num && num <= *(cmdList->tail->cmdIndex))
 			output = getCmdByNumInList(num, cmdList);
 		else
-			output = short_term_history[7 - (num - *(cmdList.tail->cmdIndex))];
+			output = short_term_history[7 - (num - *(cmdList->tail->cmdIndex))];
 	}
 	return output;
 }
@@ -392,10 +445,11 @@ BOOL isEmptyCommandList(CommandList *lst)
 	else
 		return FALSE;
 }
-void insertDataToStartCommandList(CommandList *lst, char* command)
+void insertDataToStartCommandList(CommandList *lst, char* command, short int index)
 {
 	CommandListNode * newHead;
 	newHead = createNewCommandListNode(command, NULL);
+	*(newHead->cmdIndex) = index;
 	insertNodeToStartCmdList(lst, newHead);
 }
 void insertNodeToStartCmdList(CommandList *lst, CommandListNode * head)
@@ -680,6 +734,8 @@ ApList getSubList(ApList apList, SortingMethods filters)
 int checkType(char *str)
 {
 	int i = 0, length;
+
+
 	length = strlen(str);
 	while (str[i] != '\0')
 	{
@@ -757,7 +813,7 @@ Apartment * makeNewAp(ApList apList, char *str)
 	newApartment->numOfRooms = newApNumOfRooms;
 	newApartment->enterDate.day = newApDay;
 	newApartment->enterDate.month = newApMonth;
-	newApartment->enterDate.year = newApYear;
+	newApartment->enterDate.year = newApYear+2000;
 	newApartment->code = *(apList.size);
 	addEntryTime(&newApartment->DBDate);
 
@@ -834,7 +890,7 @@ void converteToBits(unsigned int *leftPart, BYTE *rightPart, Apartment newApartm
 	unsigned int mask1 = newApartment.numOfRooms;
 	unsigned int mask2 = newApartment.enterDate.day;
 	unsigned int mask3 = newApartment.enterDate.month;
-	unsigned int mask4 = newApartment.enterDate.year - 2000;
+	unsigned int mask4 = newApartment.enterDate.year;
 	unsigned int mask5 = newApartment.DBDate.day;
 	unsigned int mask6 = newApartment.DBDate.month;
 	unsigned int mask7 = newApartment.DBDate.year - 2000;
@@ -881,8 +937,8 @@ void buyApartment(ApList *apList, int codeNumber)
 		}
 		if (curr != NULL)
 		{
-			if (curr->apPtr->code != nodeIndex)
-				curr->apPtr->code = nodeIndex;
+			/*if (curr->apPtr->code != nodeIndex)
+				curr->apPtr->code = nodeIndex;*/
 			prev = curr;
 			curr = curr->next;
 			if (curr != NULL)
@@ -901,7 +957,6 @@ void deleteApartment(ApList *apList, int timeParameter)
 	ApListNode *next;
 	int nodeIndex = 1;
 
-
 	while (curr != NULL)
 	{
 		next = curr->next;
@@ -911,8 +966,11 @@ void deleteApartment(ApList *apList, int timeParameter)
 			deleteNodeFromApList(apList, curr, prev);
 			curr = next;
 		}
-		if (curr != NULL)
-			curr->apPtr->code = nodeIndex++;
+
+		// to check!!!!
+
+		/*if (curr != NULL)
+			curr->apPtr->code = nodeIndex++;*/
 		if (curr != next)
 			curr = next;
 	}
@@ -985,25 +1043,27 @@ void printReverse(ApListNode* head)
 }
 void printAp(Apartment* ap)
 {
-	printf("code : %d\n", ap->code);
-	printf("adress = %s\n", ap->address);
-	printf("price = %d\n", ap->price);
-	printf("numOfRooms = %d\n", ap->numOfRooms);
-	printf("entryDate = %d %d %d\n\n", ap->enterDate.day, ap->enterDate.month, ap->enterDate.year);
+	printf("Apt details:\n");
+	printf("Code: %d\n", ap->code);
+	printf("Address: %s\n", ap->address);
+	printf("Number of rooms: %d\n", ap->numOfRooms);
+	printf("Price: %d\n", ap->price);
+	printf("Entry Date: %d.%d.%d\n", ap->enterDate.day, ap->enterDate.month, ap->enterDate.year);
+	printf("Database entry date: %d.%d.%d\n", ap->DBDate.day, ap->DBDate.month, ap->DBDate.year);
 }
 void printShortHistory(char *short_term_history[], int tailIndex)
 {
 	int i;
 	for (i = 6; i >= 0; i--)
 		if (short_term_history[i] != NULL)
-			printf("#%d : %s\n", 7 - i + tailIndex, short_term_history[i]);
+			printf("%d: %s\n", 7 - i + tailIndex, short_term_history[i]);
 }
 void printCmdList(CommandList cmdList)
 {
 	CommandListNode *curr = cmdList.head;
 	while (curr != NULL)
 	{
-		printf("#%d : %s\n", *(curr->cmdIndex), curr->cmdPtr);
+		printf("%d: %s\n", *(curr->cmdIndex), curr->cmdPtr);
 		curr = curr->next;
 	}
 }

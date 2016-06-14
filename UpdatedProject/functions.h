@@ -96,17 +96,17 @@ void updateCommandFile(char *fileName, char *command);
 void copyFile(FILE *src, FILE *dest);
 void promoteCommands(char *short_term_history[], char *command);
 int getActualSizeOfArray(char *arr[]);
-char *getCommandByNumber(int num, CommandList cmdList, char *short_term_history[]);
-char *getCmdByNumInList(int num, CommandList cmdList);
+char *getCommandByNumber(int num, CommandList * cmdList, char *short_term_history[]);
+char *getCmdByNumInList(int num, CommandList * cmdList);
 char *createModifiedCmd(char *input, char *paramaters);
-char* str_replace(char* string, const char* substr, const char* replacement);
+char* str_replace(char *src, char *from, char *to);
 // Command List functions
 void makeEmptyCommandList(CommandList *lst);;
 CommandListNode * createNewCommandListNode(char *command, CommandListNode * next);
 void insertDataToEndCommandList(CommandList *lst, char* cmd);
 void insertNodeToEndCommandList(CommandList *lst, CommandListNode * tail);
 BOOL isEmptyCommandList(CommandList *lst);
-void insertDataToStartCommandList(CommandList *lst, char* command);
+void insertDataToStartCommandList(CommandList *lst, char* command, short int index);
 void insertNodeToStartCmdList(CommandList *lst, CommandListNode * head);
 // ApList functions.
 void printListIter(ApList *lst);
@@ -146,7 +146,6 @@ void deleteApartment(ApList *apList, int timeParameter);
 BOOL checkByTime(Apartment *ap, int daysNumber);
 void freeAp(Apartment *ap);
 // Convertions
-int strToInt(char *str);
 void strToDate(char *token, Date *paramaterDate);
 
 // Printing
@@ -154,7 +153,6 @@ void printByType(ApList apList, int printType);
 void printListIter(ApList * lst);
 void printReverse(ApListNode* head);
 void printAp(Apartment* ap);
-void printapListReversed(Apartment **apList, int sizeOfapList);
 void printDataBaseByTime(ApList apList, int timeParameter);
 void printShortHistory(char *short_term_history[], int tailIndex);
 void printCmdList(CommandList cmdList);
@@ -162,7 +160,6 @@ void printCmdList(CommandList cmdList);
 void MergeSort(ApListNode** headRef);
 ApListNode* SortedMerge(ApListNode* a, ApListNode* b);
 void FrontBackSplit(ApListNode* source, ApListNode** frontRef, ApListNode** backRef);
-Apartment** createSubDataBaseByTime(Apartment **apList, int *sizeOfDataBase, int days);
 BOOL checkMinDate(Date curr, Date max);
 
 #endif
