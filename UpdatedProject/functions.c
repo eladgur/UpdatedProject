@@ -155,7 +155,7 @@ void readCmdDBFromTxtFile(CommandList *cmdList, char *short_term_history[], char
 // Commands
 void commandFilter(CommandList *cmdList, char *short_term_history[], ApList *apList, char *command)
 {
-	char dummy, flag, *outCommand;
+	char dummy, flag, *outCommand = NULL;
 	int num;
 
 	//1,2,5 cases
@@ -171,6 +171,7 @@ void commandFilter(CommandList *cmdList, char *short_term_history[], ApList *apL
 				outCommand = createModifiedCmd(command, outCommand);
 			processCommand(apList, outCommand);
 		}
+		strcpy(command, outCommand);
 	}
 	else if (strcmp(command, "short_history") == 0) //case 3
 		printShortHistory(short_term_history, *(cmdList->tail->cmdIndex));
